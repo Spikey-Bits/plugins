@@ -34,15 +34,9 @@ Accepted user inputs:
 
    Any non-YouTube host → HALT and surface it. No preview, no confirm; proceed to Step 2.
 
-2. **Load the profile.** Load the `engagement-profile` skill via the Skill tool. Read: channel id, handle, brand name, people, topic tags, default lookback, we-or-I, no-go list, business context, audience, clapback policy, and the four path fields: folder on the user's computer, credentials file name, token file name, review subfolder.
+2. **Load the profile.** Load the `engagement-profile` skill via the Skill tool. Read: channel id, handle, brand name, people, topic tags, default lookback, we-or-I, no-go list, business context, audience, clapback policy. The profile holds no file paths; paths are discovered at Step 3.
 
    If the skill is not installed, HALT with: `No engagement-profile skill found. Install the profile supplied with this plugin under Customize then Skills.`
-
-   **Resolve the folder.** The profile names one folder on the user's computer by its full path, plus three names inside it. In a session that folder is reachable at `$HOME/mnt/<the last part of that path>`. Build all three paths from there. If no folder of that name is connected, ask the user to connect the exact folder the profile's full path names. Two folders can share a name, so never pick one by name alone.
-
-   Export for every script call in this run:
-   - `YT_CREDENTIALS_PATH` = the resolved credentials path
-   - `YT_TOKEN_PATH` = the resolved token path, when the profile sets one
 
    **Copy the scripts onto the user's computer.** This plugin's files sit in Claude's own environment; the credentials sit on the user's machine. The scripts must run beside the credentials so that no credential is ever copied off the user's machine.
    - Read each `.js` file in `${CLAUDE_PLUGIN_ROOT}/scripts/`.
@@ -51,7 +45,19 @@ Accepted user inputs:
 
    Every later step runs the copies at `~/yt-engagement/scripts/`, never the plugin's own copy.
 
-3. **Verify the connection.** Run `node ~/yt-engagement/scripts/auth-init.js --status`.
+3. **Find the working folder, then verify the connection.**
+
+   The profile names no folder. Look at the top level of each folder connected to this session for a file whose name begins `client_secret` and ends `.json`. Top level only: an archived or backup copy sitting in a subfolder must not count. That file identifies the working folder; the user chose where it lives and nothing here depends on its path or its name.
+   - Exactly one match → that folder is the working folder.
+   - No match → HALT with: `No credentials file found. Connect the folder holding the .json file supplied with your profile.`
+   - More than one match → HALT, list the folders, and ask which one to use. Never choose for them.
+
+   From the working folder:
+   - `YT_CREDENTIALS_PATH` = the credentials file found above
+   - `YT_TOKEN_PATH` = `yt-token.json` in the same folder
+   - review folder = `comment-review` in the same folder, created if it does not exist
+
+   Then run `node ~/yt-engagement/scripts/auth-init.js --status`.
 
    Non-zero exit → HALT with: `Not connected to YouTube. See ${CLAUDE_PLUGIN_ROOT}/shared/oauth-setup-guide.md.` Include the script's `reason` field. Do not attempt any fetch.
 
@@ -92,7 +98,7 @@ Accepted user inputs:
    - `clapback_eligible: true` → clapback register, surgical. No profanity, no slurs, no name-calling, no matching the attacker's energy.
    - `substrate_needed: true` and the fact is not in the profile or the original comment → deflect with warmth. Never invent a fact.
 
-9. **Build approval panels.** One `.docx` per batch at `<profile review folder>/comment-review-youtube-<ts>-b<n>.docx` using `${CLAUDE_PLUGIN_ROOT}/shared/approval-panel-template.md` Format A. Build all of them before Step 10.
+9. **Build approval panels.** One `.docx` per batch at `<review folder>/comment-review-youtube-<ts>-b<n>.docx` using `${CLAUDE_PLUGIN_ROOT}/shared/approval-panel-template.md` Format A. Build all of them before Step 10.
 
 ## Approval and post loop
 
@@ -143,7 +149,7 @@ Accepted user inputs:
 - Proceeding past a channel-id mismatch or a failed connection check.
 - Calling a Google endpoint directly instead of through the bundled scripts.
 - Reading, printing or echoing the contents of the credentials file or the token file.
-- Writing the token anywhere other than the profile's token path.
+- Writing the token anywhere other than beside the credentials file.
 - Copying the credentials file or the token off the user's computer for any reason.
 - Profanity, slurs or name-calling, per `${CLAUDE_PLUGIN_ROOT}/shared/comment-voice-rules.md`.
 - Stating any fact not present in the profile or in the comment being answered.
