@@ -1,0 +1,1 @@
+{"name":"spikeybits-plugins","owner":{"name":"Spikey Bits","url":"https://spikeybits.com"},"plugins":[{"name":"engagement","source":"./plugins/engagement","description":"YouTube comment responder. Fetches unanswered comments, drafts brand-voice replies, review and approve before posting.","category":"productivity"}]}
