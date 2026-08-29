@@ -26,23 +26,27 @@ Both variables come from the `engagement-profile` skill and must be exported bef
 
 The token must live in a folder the user has connected. A path inside the session sandbox does not survive to the next run.
 
+The profile names the folder by its full path on the user's computer. Inside a session that folder is reachable at `$HOME/mnt/<the folder's own name>`. Resolve every path from there rather than matching on folder name alone, which picks the wrong folder when two have similar names.
+
 ## 2. Scripts
 
 Dependency-free Node. All HTTP goes through `curl`; the runtime `fetch` cannot use the sandbox proxy and no package can be installed.
 
+The scripts ship at `${CLAUDE_PLUGIN_ROOT}/scripts/` but are copied to `~/yt-engagement/scripts/` on the user's computer at the profile-load step and run from there. The credentials never leave that machine.
+
 | Script | Purpose |
 |---|---|
-| `${CLAUDE_PLUGIN_ROOT}/scripts/yt.js` | API client. Not invoked directly. |
-| `${CLAUDE_PLUGIN_ROOT}/scripts/auth-init.js` | One-time connect, and `--status` connection check. |
-| `${CLAUDE_PLUGIN_ROOT}/scripts/fetch-unresponded.js` | Scan for unanswered threads. |
-| `${CLAUDE_PLUGIN_ROOT}/scripts/post-reply.js` | Post one approved reply and confirm it landed. |
+| `yt.js` | API client. Not invoked directly. |
+| `auth-init.js` | One-time connect, and `--status` connection check. |
+| `fetch-unresponded.js` | Scan for unanswered threads. |
+| `post-reply.js` | Post one approved reply and confirm it landed. |
 
 Every script prints JSON on stdout and a JSON error object on stderr. Exit code 0 means success.
 
 ## 3. Connection check
 
 ```bash
-node "${CLAUDE_PLUGIN_ROOT}/scripts/auth-init.js" --status
+node ~/yt-engagement/scripts/auth-init.js --status
 ```
 
 Exit 0 returns `{connected: true, channel_id, channel_title, handle}`. Any non-zero exit means not connected; surface the guide at `${CLAUDE_PLUGIN_ROOT}/shared/oauth-setup-guide.md` and HALT.
@@ -50,7 +54,7 @@ Exit 0 returns `{connected: true, channel_id, channel_title, handle}`. Any non-z
 ## 4. Fetch procedure
 
 ```bash
-node "${CLAUDE_PLUGIN_ROOT}/scripts/fetch-unresponded.js" \
+node ~/yt-engagement/scripts/fetch-unresponded.js \
   --channel-id <profile channel id> --max-age-days <N> --output /tmp/comments-<ts>.json
 ```
 
@@ -88,7 +92,7 @@ Result object: `channel_id`, `channel_title`, `max_age_days`, `pages`, `scanned`
 ## 6. Post reply step
 
 ```bash
-node "${CLAUDE_PLUGIN_ROOT}/scripts/post-reply.js" \
+node ~/yt-engagement/scripts/post-reply.js \
   --parent-id <row parentId> --text-file /tmp/reply-<n>.txt --output /tmp/result-<n>.json
 ```
 
