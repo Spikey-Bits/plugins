@@ -34,15 +34,24 @@ Accepted user inputs:
 
    Any non-YouTube host → HALT and surface it. No preview, no confirm; proceed to Step 2.
 
-2. **Load the profile.** Load the `engagement-profile` skill via the Skill tool. Read: channel id, handle, brand name, people, topic tags, review folder, default lookback, we-or-I, no-go list, business context, audience, clapback policy, credentials path, token path.
+2. **Load the profile.** Load the `engagement-profile` skill via the Skill tool. Read: channel id, handle, brand name, people, topic tags, default lookback, we-or-I, no-go list, business context, audience, clapback policy, and the four path fields: folder on the user's computer, credentials file name, token file name, review subfolder.
 
    If the skill is not installed, HALT with: `No engagement-profile skill found. Install the profile supplied with this plugin under Customize then Skills.`
 
-   Export for every script call in this run:
-   - `YT_CREDENTIALS_PATH` = the profile's credentials path
-   - `YT_TOKEN_PATH` = the profile's token path, when it sets one
+   **Resolve the folder.** The profile names one folder on the user's computer by its full path, plus three names inside it. In a session that folder is reachable at `$HOME/mnt/<the last part of that path>`. Build all three paths from there. If no folder of that name is connected, ask the user to connect the exact folder the profile's full path names. Two folders can share a name, so never pick one by name alone.
 
-3. **Verify the connection.** Run `node "${CLAUDE_PLUGIN_ROOT}/scripts/auth-init.js" --status`.
+   Export for every script call in this run:
+   - `YT_CREDENTIALS_PATH` = the resolved credentials path
+   - `YT_TOKEN_PATH` = the resolved token path, when the profile sets one
+
+   **Copy the scripts onto the user's computer.** This plugin's files sit in Claude's own environment; the credentials sit on the user's machine. The scripts must run beside the credentials so that no credential is ever copied off the user's machine.
+   - Read each `.js` file in `${CLAUDE_PLUGIN_ROOT}/scripts/`.
+   - Write each one, unchanged, to `~/yt-engagement/scripts/` on the user's computer.
+   - Run `node --check` on each copy. Any failure HALTs.
+
+   Every later step runs the copies at `~/yt-engagement/scripts/`, never the plugin's own copy.
+
+3. **Verify the connection.** Run `node ~/yt-engagement/scripts/auth-init.js --status`.
 
    Non-zero exit → HALT with: `Not connected to YouTube. See ${CLAUDE_PLUGIN_ROOT}/shared/oauth-setup-guide.md.` Include the script's `reason` field. Do not attempt any fetch.
 
@@ -51,7 +60,7 @@ Accepted user inputs:
 4. **Fetch unanswered comments.** Recipe = `${CLAUDE_PLUGIN_ROOT}/shared/data-api-recipe.md`. Run:
 
    ```bash
-   node "${CLAUDE_PLUGIN_ROOT}/scripts/fetch-unresponded.js" \
+   node ~/yt-engagement/scripts/fetch-unresponded.js \
      --channel-id <profile channel id> --max-age-days <N> --output /tmp/comments-<ts>.json
    ```
 
@@ -98,7 +107,7 @@ Accepted user inputs:
 12. **Post the approved rows of the handed-back batch.** Per row, write the approved text to `/tmp/reply-<ts>-r<n>.txt`, then:
 
     ```bash
-    node "${CLAUDE_PLUGIN_ROOT}/scripts/post-reply.js" \
+    node ~/yt-engagement/scripts/post-reply.js \
       --parent-id <row parentId> --text-file /tmp/reply-<ts>-r<n>.txt --output /tmp/result-<ts>-r<n>.json
     ```
 
@@ -135,6 +144,7 @@ Accepted user inputs:
 - Calling a Google endpoint directly instead of through the bundled scripts.
 - Reading, printing or echoing the contents of the credentials file or the token file.
 - Writing the token anywhere other than the profile's token path.
+- Copying the credentials file or the token off the user's computer for any reason.
 - Profanity, slurs or name-calling, per `${CLAUDE_PLUGIN_ROOT}/shared/comment-voice-rules.md`.
 - Stating any fact not present in the profile or in the comment being answered.
 - Claiming that anyone fixed, updated or added anything.
