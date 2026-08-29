@@ -17,16 +17,14 @@
 
 ## 1. Environment contract
 
-Both variables come from the `engagement-profile` skill and must be exported before any script runs.
+Nothing here is configured by path. The working folder is whichever connected folder holds the customer's credentials file, discovered at the skill's folder-finding step. The token and the review folder sit beside it.
 
-| Variable | Source | Required |
+| Variable | Value | Required |
 |---|---|---|
-| `YT_CREDENTIALS_PATH` | profile field `credentials path` | yes |
-| `YT_TOKEN_PATH` | profile field `token path` | no — defaults to `yt-token.json` beside the credentials file |
+| `YT_CREDENTIALS_PATH` | the `client_secret*.json` found in the working folder | yes |
+| `YT_TOKEN_PATH` | `yt-token.json` in the same folder | no — defaults to exactly that |
 
-The token must live in a folder the user has connected. A path inside the session sandbox does not survive to the next run.
-
-The profile names the folder by its full path on the user's computer. Inside a session that folder is reachable at `$HOME/mnt/<the folder's own name>`. Resolve every path from there rather than matching on folder name alone, which picks the wrong folder when two have similar names.
+The working folder must be one the user has connected. Anything written elsewhere is discarded when the session ends.
 
 ## 2. Scripts
 
